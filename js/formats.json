@@ -1,0 +1,5 @@
+{
+	"Image": ["png","jpg","jpeg","webp","ico"],
+	"Video": ["mp4","avi","mkv","wmv","flv"],
+	"Audio": ["mp3","ogg","aac","wma","flac"]
+}
