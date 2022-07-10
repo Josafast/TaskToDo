@@ -56,11 +56,11 @@ function agregar(titulo,texto="",checked="false") {
 
   	let imgs = [document.createElement("img"),document.createElement("img"),document.createElement("img"),document.createElement("img")];
 
-  	imgs[0].setAttribute("src","wordle_img/checkbox.svg");
-  	imgs[1].setAttribute("src","wordle_img/chevron-down.svg");
-  	imgs[2].setAttribute("src","wordle_img/trash-outline.svg");
+  	imgs[0].setAttribute("src","images/svg/checkbox.svg");
+  	imgs[1].setAttribute("src","images/svg/chevron-down.svg");
+  	imgs[2].setAttribute("src","images/svg/trash-outline.svg");
   	imgs[2].classList.add("deleted-one");
-  	imgs[3].setAttribute("src","wordle_img/trash.svg");
+  	imgs[3].setAttribute("src","images/svg/trash.svg");
   	imgs[3].classList.add("deleted-two");
 
   	spans[0].appendChild(imgs[0]);
