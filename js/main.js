@@ -1,184 +1,202 @@
 const language = navigator.language.split("-")[0];
 const fecha = new Date();
 
-document.querySelector(".show-about").addEventListener("click",()=>{
-  	document.querySelector(".about").classList.add("showed");
+const IDBRequest = indexedDB.open('TaskToDo-dataBase',1.0);
+
+IDBRequest.addEventListener('upgradeneeded',()=>{
+	const db = IDBRequest.result;
+	db.createObjectStore('Tasks',{
+		autoIncrement: true
+	});
 });
 
-document.querySelector(".close").addEventListener("click",(e)=>{
-  	e.target.parentElement.classList.remove("showed");
-});
+IDBRequest.addEventListener("success",()=> retornar());
+
+const retornar = ()=>{
+  const IDBData = getData('readonly');
+	const cursor = IDBData.openCursor();
+	let array = [];
+	cursor.addEventListener('success',()=>{
+		if (cursor.result){
+			array.push([cursor.result.value,cursor.result.key]);
+			cursor.result.continue();
+		} else {
+			array.map(arr=> agregar(arr[0].title,arr[0].text,arr[0].check,arr[1]));
+		}
+	});
+};
+
+const getData = (modo)=>{ 
+	const db = IDBRequest.result;
+	const IDBtransaction = db.transaction('Tasks',modo);
+	const objeto = IDBtransaction.objectStore('Tasks');
+	return objeto;
+};
+
+document.querySelector(".show-about").addEventListener("click",()=>document.querySelector(".about").classList.add("showed"));
+
+document.querySelector(".close").addEventListener("click",()=>document.querySelector(".about").classList.remove("showed"));
 
 document.querySelector(".delete").textContent = language == "es" ? "Borrar todo" : "Delete all";
-
 document.querySelector(".not-have").textContent = language == "es" ? "No hay tareas por hacer" : "No task for do";
-
 document.querySelector(".text").setAttribute("placeholder",language == "es" ? "Anote su objetivo" : "Write your task");
-
 document.querySelector(".copyright").innerHTML = language == "es" ? `Todos los derechos reservados para "Ionic" y el uso de sus iconos "Ion-icons" &#169;` : `Copyright "Ionic" and the use of its icons "Ion-icons" &#169;`;
   
 const text = document.querySelector(".text");
 const list = document.querySelector(".list");
 
-const actualizar = ()=>{
-  	document.querySelector(".not-have").style.display = document.querySelector(".list").children[1] ? "none" : "inline-block";
+const actualizar = (obj,key,titulo=false,texto=false)=>{
+  document.querySelector(".not-have").style.display = document.querySelector(".list").children[1] ? "none" : "inline-block";
+  const IDBData = getData('readwrite');
 
-  	let titulos = [];
-  	let textos = [];
-  	let checks = [];
-
-  	document.querySelectorAll(".element").forEach(element=>{
-  		titulos.push(element.children[1].textContent);
-  	});
-  	document.querySelectorAll(".texto").forEach(texto=>{
-  		textos.push(texto.value);
-  	});
-  	document.querySelectorAll(".object").forEach(objeto=>{
-  		checks.push(objeto.classList.contains("ok") ? true : false);
-  	});
-
-  	localStorage.setItem("Titulos",titulos);
-  	localStorage.setItem("Textos",textos);
-  	localStorage.setItem("Checks",checks);
+	IDBData.put({
+		title: titulo != false ? titulo : obj.title,
+		text: texto != false ? texto : obj.text,
+		check: document.getElementById(key).classList.contains('ok') ? true : false
+	},key);
 };
 
-function agregar(titulo,texto="",checked="false") {
-  	let object = document.createElement("div");
-  	object.classList.add("object");
-  	if (checked == "true"){
-  		object.classList.add("ok");
-  	}
+const agregar = async (titulo,texto="",checked=false,id=0)=>{
+	if (id == 0){
+		getData('readwrite').add({
+			title: titulo,
+			text: texto,
+			check: checked,	
+		});
+	
+		let IDBData = getData('readonly').getAllKeys();
+		IDBData.addEventListener('success',(e)=>{
+			if (e.target.result){
+				agregar(titulo,texto,checked,e.target.result[e.target.result.length-1]);
+			}
+		});
+	}
 
-  	let element = document.createElement("div");
-  	element.classList.add("element");
+  let object = document.createElement("div");
+	object.setAttribute('id',id);
+  object.classList.add("object");
+  if (checked == true){
+  	object.classList.add("ok");
+  }
 
-  	let spans = [document.createElement("span"),document.createElement("span"),document.createElement("span")];
+  let element = document.createElement("div");
+  element.classList.add("element");
 
-  	let imgs = [document.createElement("img"),document.createElement("img"),document.createElement("img"),document.createElement("img")];
+  let spans = [document.createElement("span"),document.createElement("span"),document.createElement("span")];
+  let imgs = [document.createElement("img"),document.createElement("img"),document.createElement("img"),document.createElement("img")];
 
-  	imgs[0].setAttribute("src","images/svg/checkbox.svg");
-  	imgs[1].setAttribute("src","images/svg/chevron-down.svg");
-  	imgs[2].setAttribute("src","images/svg/trash-outline.svg");
-  	imgs[2].classList.add("deleted-one");
-  	imgs[3].setAttribute("src","images/svg/trash.svg");
-  	imgs[3].classList.add("deleted-two");
+	imgs[0].setAttribute("src","images/svg/checkbox.svg");
+  imgs[1].setAttribute("src","images/svg/chevron-down.svg");
+  imgs[2].setAttribute("src","images/svg/trash-outline.svg");
+  imgs[2].classList.add("deleted-one");
+  imgs[3].setAttribute("src","images/svg/trash.svg");
+  imgs[3].classList.add("deleted-two");
 
-  	spans[0].appendChild(imgs[0]);
-  	spans[1].appendChild(imgs[1]);
-  	spans[2].appendChild(imgs[2]);
-  	spans[2].appendChild(imgs[3]);
+  spans[0].appendChild(imgs[0]);
+  spans[1].appendChild(imgs[1]);
+  spans[2].appendChild(imgs[2]);
+  spans[2].appendChild(imgs[3]);
 
-  	spans[0].classList.add("checker");
+  spans[0].classList.add("checker");
+  spans[0].addEventListener("click",e=>{
+  	e.target.parentElement.parentElement.parentElement.classList.toggle("ok");
+		const IDBData = getData('readonly');
+		const cursor = IDBData.openCursor(parseInt(e.target.parentElement.parentElement.parentElement.id));
+		cursor.addEventListener('success',()=>{
+			if (cursor.result){
+				actualizar(cursor.result.value,cursor.result.key);
+			}
+		});
+  });
 
-  	spans[0].addEventListener("click",e=>{
-  		e.target.parentElement.parentElement.parentElement.classList.toggle("ok");
-  		actualizar();
-  	});
+  spans[1].classList.add("unfold");
+  spans[1].addEventListener("click",e=>{
+  	e.target.parentElement.parentElement.parentElement.classList.toggle("unfolded");
+  });
 
-  	spans[1].classList.add("unfold");
+  spans[2].classList.add("deleted");
+  spans[2].addEventListener("click",e=>{
+  	const IDBData = getData('readwrite');
+		IDBData.delete(parseInt(e.target.parentElement.parentElement.parentElement.id));
+		let objeto = document.getElementById(e.target.parentElement.parentElement.parentElement.id);
+		list.removeChild(objeto);
+		document.querySelector(".not-have").style.display = document.querySelector(".list").children[1] ? "none" : "inline-block";
+  });
 
-  	spans[1].addEventListener("click",e=>{
-  		e.target.parentElement.parentElement.parentElement.classList.toggle("unfolded");
-  	});
+  let h2 = document.createElement("h2");
+  h2.addEventListener("keyup",(e)=>{
+		const IDBData = getData('readonly');
+		const cursor = IDBData.openCursor(parseInt(e.target.parentElement.parentElement.id));
+		cursor.addEventListener('success',()=>{
+			if (cursor.result){
+				actualizar(cursor.result.value,cursor.result.key,e.target.textContent);
+			}
+		});
+	});
 
-  	spans[2].classList.add("deleted");
+  h2.setAttribute("contenteditable","");
+  h2.textContent = titulo;
+  h2.setAttribute("style","font-size:1.2em;outline:none;")
 
-  	spans[2].addEventListener("click",e=>{
-  		e.target.parentElement.parentElement.parentElement.parentElement.removeChild(e.target.parentElement.parentElement.parentElement);
-  		actualizar();
-  	});
+  element.appendChild(spans[0]);
+  element.appendChild(h2);
+  element.appendChild(spans[1]);
+  element.appendChild(spans[2]);
 
-  	let h2 = document.createElement("h2");
+	object.appendChild(element);
 
-  	h2.addEventListener("keyup",actualizar);
+  let info = document.createElement("div");
+  info.classList.add("info");
+  let textArea = document.createElement("textarea");
 
-  	h2.setAttribute("contenteditable","");
-  	h2.textContent = titulo;
-  	h2.setAttribute("style","font-size:1.2em;outline:none;")
+  textArea.addEventListener("keyup",(e)=>{
+		const IDBData = getData('readonly');
+		const cursor = IDBData.openCursor(parseInt(e.target.parentElement.parentElement.id));
+		cursor.addEventListener('success',()=>{
+			if (cursor.result){
+				actualizar(cursor.result.value,cursor.result.key,false,e.target.value);
+			}
+		});
+	});
 
-  	element.appendChild(spans[0]);
-  	element.appendChild(h2);
-  	element.appendChild(spans[1]);
-  	element.appendChild(spans[2]);
+  textArea.classList.add("texto");
+  textArea.textContent = texto;
+  info.appendChild(textArea);
 
-  	object.appendChild(element);
+  object.appendChild(info);
 
-  	let info = document.createElement("div");
-  	info.classList.add("info");
-  	let textArea = document.createElement("textarea");
+  list.appendChild(object);
+	let none = document.getElementById("0");
+	if (none){
+		list.removeChild(none);
+	}
 
-  	textArea.addEventListener("keyup",actualizar);
-
-  	textArea.classList.add("texto");
-  	textArea.textContent = texto;
-  	info.appendChild(textArea);
-
-  	object.appendChild(info);
-
-  	list.appendChild(object);
-
-  	document.querySelector(".not-have").style.display = document.querySelector(".list").children[1] ? "none" : "inline-block";
+  document.querySelector(".not-have").style.display = document.querySelector(".list").children[1] ? "none" : "inline-block";
 }
-
-function retornar(titulo,texto,check){
-  	if (titulo){
-  		let checks = check.split(",");
-  		let titulos = titulo.split(",");
-  		let textos = texto.split(",");
-  		for (let o=0; o < titulos.length;o++){
-  			agregar(titulos[o],textos[o],checks[o]);
-  		}
-  	}
-}
-
-retornar (localStorage.getItem("Titulos"),localStorage.getItem("Textos"),localStorage.getItem("Checks"));
 
 function mesdia(opcion,mesdia){
-  	if (opcion == 1){
-  		switch (mesdia) {
-			case 0 :
-				return language == "es" ? "Enero" : "January";
-			case 1 :
-				return language == "es" ? "Febrero" : "February";
-			case 2 :
-				return language == "es" ? "Marzo" : "March";
-			case 3 :
-				return language == "es" ? "Abril" : "April";
-			case 4 :
-				return language == "es" ? "Mayo" : "May";
-			case 5 :
-				return language == "es" ? "Junio" : "June";
-			case 6 :
-				return language == "es" ? "Julio" : "July";
-			case 7 :
-				return language == "es" ? "Agosto" : "August";
-			case 8 :
-				return language == "es" ? "Septiembre" : "September";
-			case 9 :
-				return language == "es" ? "Octubre" : "October";
-			case 10 :
-				return language == "es" ? "Noviembre" : "November";
-			case 11 :
-				return language == "es" ? "Diciembre" : "December";
-		}
-  	} else {
-  		switch (mesdia) {
-			case 0 :
-				return language == "es" ? "Domingo" : "Sunday";
-			case 1 :
-				return language == "es" ? "Lunes" : "Monday";
-			case 2 :
-				return language == "es" ? "Martes" : "Tuesday";
-			case 3 :
-				return language == "es" ? "Miércoles" : "Wednesday";
-			case 4 :
-				return language == "es" ? "Jueves" : "Thursday";
-			case 5 :
-				return language == "es" ? "Viernes" : "Friday";
-			case 6 :
-				return language == "es" ? "Sábado" : "Saturday"; 
-		}
-  	}
+	return opcion == 1 ? (
+		mesdia == 0 ? (language == "es" ? "Enero" : "January") :
+		mesdia == 1 ? (language == "es" ? "Febrero" : "February") :
+		mesdia == 2 ? (language == "es" ? "Marzo" : "March") :
+		mesdia == 3 ? (language == "es" ? "Abril" : "April") :
+		mesdia == 4 ? (language == "es" ? "Mayo" : "Mayo") :
+		mesdia == 5 ? (language == "es" ? "Junio" : "June") :
+		mesdia == 6 ? (language == "es" ? "Julio" : "July") :
+		mesdia == 7 ? (language == "es" ? "Agosto" : "August") :
+		mesdia == 8 ? (language == "es" ? "Septiembre" : "September") :
+		mesdia == 9 ? (language == "es" ? "Octubre" : "October") :
+		mesdia == 10 ? (language == "es" ? "Noviembre" : "November") :
+		(language == "es" ? "Diciembre" : "December") 
+	) : (
+		mesdia == 0 ? (language == "es" ? "Domingo" : "Sunday") :
+		mesdia == 1 ? (language == "es" ? "Lunes" : "Monday") :
+		mesdia == 2 ? (language == "es" ? "Martes" : "Tuesday") :
+		mesdia == 3 ? (language == "es" ? "Miércoles" : "Wednesday") :
+		mesdia == 4 ? (language == "es" ? "Jueves" : "Thursday") :
+		mesdia == 5 ? (language == "es" ? "Viernes" : "Friday") :
+		(language == "es" ? "Sábado" : "Saturday")
+	);
 }
 
 document.querySelector(".dia").textContent = fecha.getDate();
@@ -188,17 +206,15 @@ document.querySelector(".año").textContent = fecha.getFullYear();
 
 window.addEventListener("load",()=>{
  	document.querySelector(".delete").addEventListener("click",()=>{
-  		let not = document.querySelector(".not-have");
-  		list.innerHTML = "";
-  		list.appendChild(not); 
-  		actualizar();
-  		localStorage.clear();
+			getData('readwrite','Objetos eliminados').clear();
+			let not = list.children[0];
+			list.innerHTML = '';
+			list.appendChild(not).style.display = document.querySelector(".list").children[1] ? "none" : "inline-block";
   	});
 
  	document.querySelector(".add").addEventListener("click",()=>{
  		if (text.value != "") {
  			agregar(text.value);
- 			actualizar();
  			text.value = "";
  		}
  	});
@@ -208,7 +224,6 @@ window.addEventListener("load",()=>{
  			if (e.keyCode === 13 && !e.shiftKey) {
        			e.preventDefault();
        			agregar(text.value);
-       			actualizar();
        			text.value = "";
     		}
  		} 
